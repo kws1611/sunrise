@@ -1,0 +1,6 @@
+<launch>
+    <rosparam command="load" file="$(find mavros_tutorial)/param/param.yaml" />
+
+    <node name= "main" pkg="mavros_tutorial" type="main.py" output="screen" />
+    
+</launch>
