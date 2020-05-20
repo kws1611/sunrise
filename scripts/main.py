@@ -29,7 +29,7 @@ class mission:
         self.step = 0
 
         # Publisher
-        self.global_pos_pub = rospy.Publisher('/mavros/setpoint_position/global', GlobalPositionTarget, queue_size=10)
+        self.global_pos_pub = rospy.Publisher('/mavros/setpoint_raw/global', GlobalPositionTarget, queue_size=10)
         self.local_pos_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
 
         # Subscriber
@@ -68,24 +68,22 @@ class mission:
         # http://wiki.ros.org/mavros/CustomModes
 
         while True:
-            self.pub_local_position(0,0,0)
+            self.pub_local_position(0, 0, 0)
 
             if self.current_state.mode != mode:
                 self.set_mode_client(base_mode=0, custom_mode=mode)
             
-            if self.current_state.mode == mode: 
-                rospy.loginfo_once("Current mode: %s" % self.current_state.mode)
+            else:
                 break
 
             self.service_rate.sleep()
                 
     def setArm(self):
         while True:
-            if not self.current_state.armed:
+            if self.current_state.armed is not True:
                 self.arming_client(True)
 
-            if self.current_state.armed:
-                rospy.loginfo_once("Vehicle armed: %r" % self.current_state.armed)
+            else:
                 break
 
             self.service_rate.sleep()
@@ -117,8 +115,16 @@ class mission:
         rospy.loginfo('Set Obstacle')
 
     def stateCb(self, msg):
-        self.current_state = msg
+        prev_state = self.current_state
 
+        self.current_state = msg
+        
+        if self.current_state.mode != prev_state.mode:
+            rospy.loginfo("Current mode: %s" % self.current_state.mode)
+
+        if self.current_state.armed != prev_state.armed:
+            rospy.loginfo("Vehicle armed: %r" % self.current_state.armed)
+        
     def homeCb(self, msg):
         self.home_position.latitude = msg.geo.latitude
         self.home_position.longitude = msg.geo.longitude
@@ -130,31 +136,31 @@ class mission:
         self.current_position.longitude = msg.longitude
         self.current_position.altitude = msg.altitude
 
-    def pub_waypoint_point(self, wp):
-        point = GlobalPositionTarget()
+    def pub_global_position(self, point):
+        pose = GlobalPositionTarget()
 
-        point.header.stamp = rospy.Time.now()
-        point.coordinate_frame = GlobalPositionTarget().FRAME_GLOBAL_REL_ALT
-        point.type_mask = (GlobalPositionTarget().IGNORE_VX + GlobalPositionTarget().IGNORE_VY + GlobalPositionTarget().IGNORE_VZ +
+        pose.header.stamp = rospy.Time.now()
+        pose.coordinate_frame = GlobalPositionTarget().FRAME_GLOBAL_REL_ALT
+        pose.type_mask = (GlobalPositionTarget().IGNORE_VX + GlobalPositionTarget().IGNORE_VY + GlobalPositionTarget().IGNORE_VZ +
                             GlobalPositionTarget().IGNORE_AFX + GlobalPositionTarget().IGNORE_AFY + GlobalPositionTarget().IGNORE_AFZ + 
                             GlobalPositionTarget().FORCE + GlobalPositionTarget().IGNORE_YAW + GlobalPositionTarget().IGNORE_YAW_RATE)
-        point.latitude = wp.latitude
-        point.longitude = wp.longitude
-        point.altitude = wp.altitude
+        pose.latitude = point.latitude
+        pose.longitude = point.longitude
+        pose.altitude = point.altitude
 
-        self.global_pos_pub.publish(point)
+        self.global_pos_pub.publish(pose)
     
-    def pub_waypoint_velocity(self, v):
-        vector = GlobalPositionTarget()
+    def pub_global_velocity(self, vector):
+        pose = GlobalPositionTarget()
 
-        vector.header.stamp = rospy.Time.now()
-        vector.coordinate_frame = GlobalPositionTarget().FRAME_GLOBAL_REL_ALT
-        vector.type_mask = (GlobalPositionTarget().IGNORE_LATITUDE + GlobalPositionTarget().IGNORE_LONGITUDE + GlobalPositionTarget().IGNORE_ALTITUDE +
+        pose.header.stamp = rospy.Time.now()
+        pose.coordinate_frame = GlobalPositionTarget().FRAME_GLOBAL_REL_ALT
+        pose.type_mask = (GlobalPositionTarget().IGNORE_LATITUDE + GlobalPositionTarget().IGNORE_LONGITUDE + GlobalPositionTarget().IGNORE_ALTITUDE +
                             GlobalPositionTarget().IGNORE_AFX + GlobalPositionTarget().IGNORE_AFY + GlobalPositionTarget().IGNORE_AFZ + 
                             GlobalPositionTarget().FORCE + GlobalPositionTarget().IGNORE_YAW + GlobalPositionTarget().IGNORE_YAW_RATE)
-        vector.velocity.x = 0
-        vector.velocity.y = 0
-        vector.velocity.z = 0
+        pose.velocity.x = vector.x
+        pose.velocity.y = vector.y
+        pose.velocity.z = vector.z
 
         self.global_pos_pub.publish(vector)
 
@@ -163,8 +169,8 @@ class mission:
 
         pose.header.stamp = rospy.Time.now()
         pose.pose.position.x = x
-        pose.pose.position.x = y
-        pose.pose.position.x = z
+        pose.pose.position.y = y
+        pose.pose.position.z = z
 
         self.local_pos_pub.publish(pose)
 
@@ -198,11 +204,11 @@ class mission:
                    5:['Land', self.home_position]}.get(self.step, 'END')
 
         if (process[0] == 'Takeoff') or (process[0] == 'WP2') or (process[0] == 'WP3') or (process[0] == 'Land'):
-            self.pub_waypoint_point(process[1])
+            self.pub_global_position(process[1])
         
         elif (process[0] == 'WP1') or (process[0] == 'Return'):
-            self.pub_waypoint_point(process[1])
-            #self.pub_waypoint_velocity(v)
+            self.pub_global_position(process[1])
+            #self.pub_global_velocity(v)
         else:
             rospy.loginfo('Mission Complete')
             quit()
@@ -237,8 +243,9 @@ if __name__ == '__main__':
         flight.setArm()
 
         while not rospy.is_shutdown():
+            # flight.pub_local_position(0,0,10)
             # flight.process()
-            flight.pub_local_position(0,0,10)
+            flight.pub_global_position(flight.wpTakeoff)
 
             rate.sleep()
 
