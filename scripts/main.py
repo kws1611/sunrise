@@ -3,7 +3,7 @@
 import rospy
 from sensor_msgs.msg import NavSatFix
 from geographic_msgs.msg import GeoPoint, GeoPoseStamped
-from geometry_msgs.msg import PoseStamped 
+from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State, HomePosition
 from mavros_msgs.srv import CommandBool, CommandHome, SetMode, CommandTOL
 from math import sin, cos, sqrt, pi
@@ -31,7 +31,8 @@ class mission:
         self.step = 0
 
         # Publisher
-        self.global_pos_pub = rospy.Publisher('/mavros/setpoint_position/global', GeoPoseStamped, queue_size=10)
+        self.global_pose_pub = rospy.Publisher('/mavros/setpoint_position/global', GeoPoseStamped, queue_size=10)
+        self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
 
         # Subscriber
         rospy.Subscriber('/mavros/state', State, self.stateCb)
@@ -149,22 +150,22 @@ class mission:
         pose.pose.position.longitude = point.longitude
         pose.pose.position.altitude = point.altitude
 
-        self.global_pos_pub.publish(pose)
+        self.global_pose_pub.publish(pose)
     
-    def pub_global_velocity(self, vector):
-        pass
+    def pub_global_velocity(self, velocity):
+        self.velocity_pub.publish(velocity)
 
-    def waypoint_reach_check(self, wp):
+    def waypoint_reach_check(self, wp, current_position):
         # Earth long radius = 6370km, short radius = 6262km
         # Get radius by linear interpolation
 
-        diffLat = (wp[1].latitude - self.current_position.latitude) * pi/180  # unit(radian)
-        diffLon = (wp[1].longitude - self.current_position.longitude) * pi/180  # unit(radian)
-        diffAlt = wp[1].altitude - self.current_position.altitude
+        diffLat = (wp[1].latitude - current_position.latitude) * pi/180  # unit(radian)
+        diffLon = (wp[1].longitude - current_position.longitude) * pi/180  # unit(radian)
+        diffAlt = wp[1].altitude - current_position.altitude
 
         radius = (6370-108/90*abs(wp[1].latitude)) * 1e3  # unit(m)
 
-        currentLat_rad = self.current_position.latitude * pi/180
+        currentLat_rad = current_position.latitude * pi/180
 
         d = sqrt((diffLat * radius)**2 + (diffLon * radius * cos(currentLat_rad))**2 + diffAlt**2)
 
@@ -174,7 +175,19 @@ class mission:
         else:
             rospy.loginfo_throttle(1, '%s Process <Distance: %.1f>'%(wp[0], d))
             return False
-            
+
+    def calculate_velocity(self, target, obstacle, current_position):
+        velocity = Twist()
+
+        velocity.linear.x = 10
+        velocity.linear.y = 0
+        velocity.linear.z = 0
+
+        velocity.angular.x = 0
+        velocity.angular.y = 0
+        velocity.angular.z = 0
+
+        return velocity
 
     def process(self):
         process = {0:['Takeoff', self.wpTakeoff],
@@ -188,13 +201,14 @@ class mission:
             self.pub_global_position(process[1])
         
         elif (process[0] == 'WP1') or (process[0] == 'Return'):
-            self.pub_global_position(process[1])
-            #self.pub_global_velocity(v)
+            #self.pub_global_position(process[1])
+            velocity = self.calculate_velocity(process[1], self.obstacle, self.current_position)
+            self.pub_global_velocity(velocity)
         else:
             rospy.loginfo('Mission Complete')
             quit()
 
-        result = self.waypoint_reach_check(process)
+        result = self.waypoint_reach_check(process, self.current_position)
 
         if result is True:
             if process[0] == 'Land':
@@ -205,7 +219,7 @@ class mission:
 
 if __name__ == '__main__':
     # Initialize node
-    rospy.init_node('test', anonymous=True)
+    rospy.init_node('main', anonymous=True)
     
     flight = mission()
 
