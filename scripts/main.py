@@ -1,78 +1,74 @@
 #!/usr/bin/env python
 
 import rospy
-from sensor_msgs.msg import NavSatFix
-from geographic_msgs.msg import GeoPoint, GeoPoseStamped
-from geometry_msgs.msg import PoseStamped, Twist
+from geographic_msgs.msg import GeoPoint
+from geometry_msgs.msg import Point, PoseStamped, Twist
+from nav_msgs.msg import Odometry
 from mavros_msgs.msg import State, HomePosition
-from mavros_msgs.srv import CommandBool, CommandHome, SetMode, CommandTOL
+from mavros_msgs.srv import CommandBool, SetMode
 from math import sin, cos, sqrt, pi
+import numpy as np
 
 class mission:
     def __init__(self):
         self.current_state = State()
-        self.home_position = GeoPoint()
-        self.current_position = NavSatFix()
+        self.global_home_position = GeoPoint()
+        self.current_local_position = Point()
         
-        self.service_rate = rospy.Rate(0.5)
-
-        self.diff = 47.0
-
+        self.earth_radius = None
+        self.home_set = False
+        
         # Waypoints and Obstacle point
-        self.wpTakeoff = GeoPoint()
+        self.local_home_position = None
+        self.wpTakeoff = None
 
-        self.wp1 = GeoPoint()
-        self.wp2 = GeoPoint()
-        self.wp3 = GeoPoint()
+        self.wp1 = None
+        self.wp2 = None
+        self.wp3 = None
 
-        self.obstacle = GeoPoint()
+        self.obstacle = None
 
-        self.wpReachRange = 0.5  # meter
         self.step = 0
 
         # Publisher
-        self.global_pose_pub = rospy.Publisher('/mavros/setpoint_position/global', GeoPoseStamped, queue_size=10)
+        self.local_pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
         self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
 
         # Subscriber
         rospy.Subscriber('/mavros/state', State, self.stateCb)
         rospy.Subscriber('/mavros/home_position/home', HomePosition, self.homeCb)
-        rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.positionCb)
+        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.LocalPositionCb)
 
         # Service_client
         self.arming_client = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
         self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
-        #self.set_home_client = rospy.ServiceProxy('/mavros/cmd/set_home', CommandHome)
-        #self.land_client = rospy.ServiceProxy('/mavros/cmd/land', CommandTOL)
-
+    
     def check_FCU_connection(self):
         while not self.current_state.connected:
-            rospy.loginfo_once("Waiting FCU connection")
+            rospy.loginfo_throttle(1, "Wait FCU connection")
 
         rospy.loginfo("FCU connected")
 
-    '''
-    def setHome(self):
-        while True:
-            if self.current_position.status == 0:   # 0 means GPS Fixed
-                response = self.set_home_client(True, 0, self.current_position.latitude, self.current_position.longitude, self.current_position.altitude)
-                
-                if response.success is True:
-                    rospy.loginfo("Set Home position")
-                    break
+    def check_home_setting(self):
+        while not self.home_set:
+            rospy.loginfo_throttle(1, "Wait Home position Setting")
+        rospy.loginfo("Home position is setted")
 
-            else:
-                rospy.loginfo("GPS is not Fixed")
+    def setEarthRadius(self):
+        R_long = 6378137 # unit: meter
+        R_short = 6356752 # unit: meter
 
-            self.service_rate.sleep()
-    '''
+        lat = self.global_home_position.latitude
+
+        self.earth_radius = sqrt(((R_long * cos(lat * pi/180))**2 + (R_short * sin(lat * pi/180))**2))
 
     def setMode(self, mode):
         # Custom Mode List: 
         # http://wiki.ros.org/mavros/CustomModes
 
+        rate = rospy.Rate(0.5)
         while True:
-            self.pub_global_position(self.home_position)
+            self.PubLocalPosition(self.local_home_position)
 
             if self.current_state.mode != mode:
                 self.set_mode_client(base_mode=0, custom_mode=mode)
@@ -80,9 +76,10 @@ class mission:
             else:
                 break
 
-            self.service_rate.sleep()
+            rate.sleep()
                 
     def setArm(self):
+        rate = rospy.Rate(0.5)
         while True:
             if self.current_state.armed is not True:
                 self.arming_client(True)
@@ -90,31 +87,22 @@ class mission:
             else:
                 break
 
-            self.service_rate.sleep()
+            rate.sleep()
 
     def setWayPoints(self):
-        self.wpTakeoff.latitude = self.home_position.latitude
-        self.wpTakeoff.longitude = self.home_position.longitude
-        self.wpTakeoff.altitude = rospy.get_param('/takeoff_alt', 30.0)
+        self.local_home_position = Point(0, 0, 0)
 
-        self.wp1.latitude = rospy.get_param('/waypoint/wp1')[0]
-        self.wp1.longitude = rospy.get_param('/waypoint/wp1')[1]
-        self.wp1.altitude = rospy.get_param('/waypoint/wp1')[2]
+        self.wpTakeoff = Point(0, 0, rospy.get_param('/takeoff_alt', 30.0))
 
-        self.wp2.latitude = rospy.get_param('/waypoint/wp2')[0]
-        self.wp2.longitude = rospy.get_param('/waypoint/wp2')[1]
-        self.wp2.altitude = rospy.get_param('/waypoint/wp2')[2]
-
-        self.wp3.latitude = rospy.get_param('/waypoint/wp3')[0]
-        self.wp3.longitude = rospy.get_param('/waypoint/wp3')[1]
-        self.wp3.altitude = rospy.get_param('/waypoint/wp3')[2]
-
+        self.wp1 = self.ConvertLocalPoint(rospy.get_param('/waypoint/wp1'))
+        self.wp2 = self.ConvertLocalPoint(rospy.get_param('/waypoint/wp2'))
+        self.wp3 = self.ConvertLocalPoint(rospy.get_param('/waypoint/wp3'))
+        
         rospy.loginfo('Set Waypoint')
 
     def setObstaclePoints(self):
-        self.obstacle.latitude = rospy.get_param('/obstacle')[0]
-        self.obstacle.longitude = rospy.get_param('/obstacle')[1]
-        self.obstacle.altitude = rospy.get_param('/obstacle')[2]
+        # Z axis means the circle range
+        self.obstacle = self.ConvertLocalPoint(rospy.get_param('/obstacle'))
 
         rospy.loginfo('Set Obstacle')
 
@@ -130,62 +118,97 @@ class mission:
             rospy.loginfo("Vehicle armed: %r" % self.current_state.armed)
         
     def homeCb(self, msg):
-        self.home_position.latitude = msg.geo.latitude
-        self.home_position.longitude = msg.geo.longitude
-        self.home_position.altitude = msg.geo.altitude - self.diff
+        self.home_set = True
 
-    def positionCb(self, msg):
-        self.current_position.status = msg.status.status   # No_Fix = -1, Fix = 0, SBAS_Fix = 1, GBAS_Fix = 2
+        self.global_home_position.latitude = msg.geo.latitude
+        self.global_home_position.longitude = msg.geo.longitude
 
-        self.current_position.latitude = msg.latitude
-        self.current_position.longitude = msg.longitude
-        self.current_position.altitude = msg.altitude - self.diff
+    def LocalPositionCb(self, msg):
+        self.current_local_position.x = msg.pose.position.x
+        self.current_local_position.y = msg.pose.position.y
+        self.current_local_position.z = msg.pose.position.z
 
-    def pub_global_position(self, point):
-        pose = GeoPoseStamped()
+    def PubLocalPosition(self, point):
+        pose = PoseStamped()
 
         pose.header.stamp = rospy.Time.now()
+        pose.pose.position.x = point.x
+        pose.pose.position.y = point.y
+        pose.pose.position.z = point.z
 
-        pose.pose.position.latitude = point.latitude
-        pose.pose.position.longitude = point.longitude
-        pose.pose.position.altitude = point.altitude
+        self.local_pose_pub.publish(pose)
 
-        self.global_pose_pub.publish(pose)
-    
-    def pub_global_velocity(self, velocity):
-        self.velocity_pub.publish(velocity)
+    def PublishVelocity(self, vel):
+        self.velocity_pub.publish(vel)
 
-    def waypoint_reach_check(self, wp, current_position):
-        # Earth long radius = 6370km, short radius = 6262km
-        # Get radius by linear interpolation
+    def ConvertLocalPoint(self, global_point):
+        local_point = Point()
 
-        diffLat = (wp[1].latitude - current_position.latitude) * pi/180  # unit(radian)
-        diffLon = (wp[1].longitude - current_position.longitude) * pi/180  # unit(radian)
-        diffAlt = wp[1].altitude - current_position.altitude
+        home_lat = self.global_home_position.latitude
+        home_lon = self.global_home_position.longitude
+        
+        local_point.x = self.earth_radius * cos(home_lat * pi / 180) * (global_point[1] - home_lon) * pi / 180
+        local_point.y = self.earth_radius * (global_point[0] - home_lat) * pi / 180
+        local_point.z = global_point[2]
 
-        radius = (6370-108/90*abs(wp[1].latitude)) * 1e3  # unit(m)
+        return local_point
 
-        currentLat_rad = current_position.latitude * pi/180
+    def waypoint_reach_check(self, wp, reach_range):
 
-        d = sqrt((diffLat * radius)**2 + (diffLon * radius * cos(currentLat_rad))**2 + diffAlt**2)
+        x = self.current_local_position.x
+        y = self.current_local_position.y
+        z = self.current_local_position.z
 
-        if d < self.wpReachRange :
+        d = sqrt((wp[1].x - x)**2 + (wp[1].y - y)**2 + (wp[1].z - z)**2)
+
+        if d < reach_range :
             rospy.loginfo('Done')
             return True
         else:
             rospy.loginfo_throttle(1, '%s Process <Distance: %.1f>'%(wp[0], d))
             return False
 
-    def calculate_velocity(self, target, obstacle, current_position):
+    def calculate_velocity(self, wp):
         velocity = Twist()
 
-        velocity.linear.x = 10
-        velocity.linear.y = 0
-        velocity.linear.z = 0
+        xy_position = np.array((self.current_local_position.x, self.current_local_position.y))
+        xy_target = np.array((wp.x, wp.y))
 
-        velocity.angular.x = 0
-        velocity.angular.y = 0
-        velocity.angular.z = 0
+        z_position = self.current_local_position.z
+        z_target = wp.z
+
+        # XY control
+        obstacle = np.array((self.obstacle.x, self.obstacle.y))
+        R  = self.obstacle.z
+        d1, d2 = (50.0, R + 20.0)
+        XY_max_vel = 12.0
+        
+        k1 = XY_max_vel / d1
+        k2 = 2*XY_max_vel * (R**2) * R*d2/(d2 - R)
+        
+        distance_goal = np.linalg.norm((xy_target - xy_position))
+        distance_obstacle = np.linalg.norm((obstacle - xy_position))
+
+        # XY control, Attractive term
+        if distance_goal <= d1:
+            gradient = k1 * (xy_position - xy_target)
+        else:
+            gradient = k1*d1/distance_goal * (xy_position - xy_target)
+
+        # XY control, Repulsive term
+        if distance_obstacle <= d2:
+            gradient += k2*(1/d2 - 1/distance_obstacle)/(distance_obstacle**3)*(xy_position - obstacle)
+
+        velocity.linear.x = -gradient[0]
+        velocity.linear.y = -gradient[1]
+
+        # Z control
+        k3 = 2
+
+        velocity.linear.z = k3 * (z_target - z_position)
+
+        rospy.loginfo_once((k1,k2))
+        rospy.loginfo_throttle(1, velocity.linear)
 
         return velocity
 
@@ -195,21 +218,24 @@ class mission:
                    2:['WP2', self.wp2],
                    3:['WP3', self.wp3],
                    4:['Return', self.wpTakeoff],
-                   5:['Land', self.home_position]}.get(self.step, 'END')
+                   5:['Land', self.local_home_position]}.get(self.step, 'END')
 
         if (process[0] == 'Takeoff') or (process[0] == 'WP2') or (process[0] == 'WP3') or (process[0] == 'Land'):
-            self.pub_global_position(process[1])
+            self.PubLocalPosition(process[1])
         
         elif (process[0] == 'WP1') or (process[0] == 'Return'):
-            #self.pub_global_position(process[1])
-            velocity = self.calculate_velocity(process[1], self.obstacle, self.current_position)
-            self.pub_global_velocity(velocity)
+            # self.PubLocalPosition(process[1])
+
+            velocity = self.calculate_velocity(process[1])
+            self.PublishVelocity(velocity)
+
         else:
             rospy.loginfo('Mission Complete')
             quit()
 
-        result = self.waypoint_reach_check(process, self.current_position)
-
+        result = self.waypoint_reach_check(process, 0.5)
+        #rospy.loginfo_throttle(1, self.current_local_position)
+        
         if result is True:
             if process[0] == 'Land':
                 while self.current_state.armed is True:
@@ -229,8 +255,9 @@ if __name__ == '__main__':
         flight.check_FCU_connection()
         rospy.sleep(1)
 
-        #flight.setHome()
-        #rospy.sleep(1)
+        flight.check_home_setting()
+        flight.setEarthRadius() 
+        rospy.sleep(1)
         
         flight.setWayPoints()
         flight.setObstaclePoints()
