@@ -1,0 +1,6 @@
+<launch>
+    <rosparam command="load" file="$(find sunrise)/param/waypoint.yaml" />
+
+    <node name= "main" pkg="sunrise" type="takeoff_test.py" output="screen" />
+    
+</launch>

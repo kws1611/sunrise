@@ -2,5 +2,6 @@
     <rosparam command="load" file="$(find sunrise)/param/waypoint.yaml" />
 
     <node name= "main" pkg="sunrise" type="main.py" output="screen" />
+    <node name= "gps_log" pkg="sunrise" type="gps_log.py" />
     
 </launch>

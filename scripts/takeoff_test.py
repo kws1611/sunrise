@@ -6,11 +6,10 @@ from geometry_msgs.msg import Point, PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from mavros_msgs.msg import State, HomePosition
 from mavros_msgs.srv import CommandBool, SetMode
-from sunrise.msg import WayPoint
 from math import sin, cos, sqrt, pi
 import numpy as np
 
-class Mission:
+class mission:
     def __init__(self):
         self.current_state = State()
         self.global_home_position = GeoPoint()
@@ -34,7 +33,6 @@ class Mission:
         # Publisher
         self.local_pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
         self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
-        self.waypoint_pub = rospy.Publisher('/sunrise/waypoint', WayPoint, queue_size=10)
 
         # Subscriber
         rospy.Subscriber('/mavros/state', State, self.stateCb)
@@ -143,9 +141,6 @@ class Mission:
     def PublishVelocity(self, vel):
         self.velocity_pub.publish(vel)
 
-    def PublishWayPoint(self, wp):
-        self.waypoint_pub.publish(wp)
-
     def ConvertLocalPoint(self, global_point):
         local_point = Point()
 
@@ -215,28 +210,15 @@ class Mission:
 
     def process(self):
         process = {0:['Takeoff', self.wpTakeoff],
-                   1:['WP1', self.wp1],
-                   2:['WP2', self.wp2],
-                   3:['WP3', self.wp3],
-                   4:['Return', self.wpTakeoff],
-                   5:['Land', self.local_home_position]}.get(self.step, 'END')
+                   1:['Land', self.local_home_position]}.get(self.step, 'END')
 
-        if (process[0] == 'Takeoff') or (process[0] == 'WP2') or (process[0] == 'WP3') or (process[0] == 'Land'):
+        if (process[0] == 'Takeoff') or (process[0] == 'Land'):
             self.PubLocalPosition(process[1])
-        
-        elif (process[0] == 'WP1') or (process[0] == 'Return'):
-            if self.waypoint_reach_check(process, 20) is False:
-                velocity = self.calculate_velocity(process[1])
-                self.PublishVelocity(velocity)
-
-            else:
-                self.PubLocalPosition(process[1])
 
         else:
             rospy.loginfo('Mission Complete')
             quit()
 
-        self.PublishWayPoint(self.step)
         result = self.waypoint_reach_check(process, 0.5)
 
         if result is True:
@@ -251,7 +233,7 @@ if __name__ == '__main__':
     # Initialize node
     rospy.init_node('main', anonymous=True)
     
-    flight = Mission()
+    flight = mission()
 
     rate = rospy.Rate(20.0)
 
