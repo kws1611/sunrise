@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy
+<<<<<<< HEAD
 from sunrise.msg import WayPoint
 
 class Winch:
@@ -16,3 +17,6 @@ class Winch:
             self.motor_run()
 
     def motor_run(self):
+=======
+
+>>>>>>> 7341e504cdd06c18504a409bc0e85a1ee24c06cf
