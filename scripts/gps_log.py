@@ -31,14 +31,28 @@ class Log:
             self.mode = '0'
     
     def WayPointCallback(self, msg):
-        self.waypoint_data = str(msg.waypoint)
+        if (msg.waypoint == 0) or (msg.waypoint == 1):
+            self.waypoint_data = '1'
+            
+        elif msg.waypoint == 2:
+            self.waypoint_data = '2'
+            
+        elif msg.waypoint == 3:
+            self.waypoint_data = '3'
+
+        elif (msg.waypoint == 4) or (msg.waypoint == 5):
+            self.waypoint_data = '0'
+
+        else:
+            rospy.signal_shutdown('complete')
+            print('222222222')
 
     def TimeCallback(self, msg):
-        self.gps_time = str(format(msg.time_ref.secs,".2e"))
+        self.gps_time = str(format(msg.time_ref.secs % 100000,".4e"))
 
     def GpsCallback(self, msg):
-        self.latitude = str(msg.latitude)
-        self.longitude = str(msg.longitude)
+        self.latitude = str(round(msg.latitude, 6))
+        self.longitude = str(round(msg.longitude, 6))
         self.altitude = str(round(msg.altitude,1))
 
     def WriteLog(self):
@@ -47,7 +61,7 @@ class Log:
 
 if __name__ == '__main__':
     # Initialize node
-    rospy.init_node('gps_log', anonymous=True)
+    rospy.init_node('gps_log', anonymous=True, disable_signals=True)
 
     log = Log()
 

@@ -184,8 +184,8 @@ class Mission:
         # XY control
         obstacle = np.array((self.obstacle.x, self.obstacle.y))
         R  = self.obstacle.z
-        d1, d2 = (50.0, R + 20.0)
-        XY_max_vel = 12.0
+        d1, d2 = (10.0, R + 7.0)
+        XY_max_vel = 3.0
         
         k1 = XY_max_vel / d1
         k2 = 2*XY_max_vel * (R**2) * R*d2/(d2 - R)
@@ -233,7 +233,9 @@ class Mission:
                 self.PubLocalPosition(process[1])
 
         else:
+            self.PublishWayPoint(self.step)
             rospy.loginfo('Mission Complete')
+            rospy.signal_shutdown('Mission Complete')
             quit()
 
         self.PublishWayPoint(self.step)
@@ -249,7 +251,7 @@ class Mission:
 
 if __name__ == '__main__':
     # Initialize node
-    rospy.init_node('main', anonymous=True)
+    rospy.init_node('main', anonymous=True, disable_signals=True)
     
     flight = Mission()
 
