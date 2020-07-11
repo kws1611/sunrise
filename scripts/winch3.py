@@ -25,30 +25,18 @@ encPinB = 24
 GPIO.setup(encPinA, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(encPinB, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+global encoderPos
 encoderPos = 0
 
-def encoderA(channel):
-    global encoderPos
-    GPIO.remove.event.detect(encPinA)
-    if GPIO.input(encPinA) == GPIO.input(encPinB):
-        encoderPos += 1
-    else:
-        encoderPos -= 1
-   
-def encoderB(channel):
-    global encoderPos
-    GPIO.remove.event.detect(encPinB)
-    if GPIO.input(encPinA) == GPIO.input(encPinB):
-        encoderPos -= 1
-    else:
-        encoderPos += 1
 
 
 class Winch:
     def __init__(self):
         self.pwm = GPIO.PWM(pwmPin, 100)
         self.pwm.start(100)
-        self.flag = 0
+        self.flag = 0        
+        self.lastencPinA = 0
+        self.encoderPos = 0
         '''self.velLimit = 0
         self.angVelLimit = 0
         rospy.Subscriber('/sunrise/waypoint', WayPoint, self.waypoint)
@@ -70,19 +58,43 @@ class Winch:
     def determine(self):
         if self.wp == 2 && self.vel < self.velLimit && self.angVel < self.angVelLimit :
             self.motor_run()
-'''
-    def motor_run(self):
-        global encoderPos
-        for i in range(0,50):
-            if i<40:
-                self.pwmValue=100       
+        '''
+    '''
+    def encoderA(self, channel):
+        GPIO.remove.event.detect(encPinA)
+        if GPIO.input(encPinA) == GPIO.input(encPinB):
+            if GPIO.input(encPinA) != self.lastencPinA:
+                self.encoderPos += 1
             else:
-                self.pwmValue=0
+                self.encoderPos -= 1
+        self.lastencPinA = GPIO.input(encPinA)
+    '''
+    def encoderA(self, channel):
+        print("FUNCTION")
+        if GPIO.input(encPinA) == GPIO.input(encPinB):
+            self.encoderPos += 1
+        else:
+            self.encoderPos -= 1
+
+    '''
+    def encoderB(channel):
+        GPIO.remove.event.detect(encPinB)
+        if GPIO.input(encPinA) == GPIO.input(encPinB):
+            encoderPos -= 1
+        else:
+            encoderPos += 1
+    '''
+    def motor_run(self):
+
+            self.pwmValue=100
             self.pwm.ChangeDutyCycle(self.pwmValue)
-            #GPIO.add_event_detect(encPinA, GPIO.BOTH, callback=encoderA, bouncetime=200)
+            GPIO.remove_event_detect(encPinA)
+            GPIO.wait_for_edge(encPinA, GPIO.BOTH)
+            GPIO.remove_event_detect(encPinA)      
+            GPIO.add_event_detect(encPinA, GPIO.BOTH, callback=self.encoderA)
+                
             #GPIO.add_event_detect(encPinB, GPIO.BOTH, callback=encoderB, bouncetime=200)
-            print(encoderPos)
-            time.sleep(0.2)
+            print(self.encoderPos)
 
 if __name__=="__main__":
     motor = Winch()
