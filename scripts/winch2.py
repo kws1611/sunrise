@@ -58,7 +58,7 @@ if __name__=="__main__":
         else:
             pwmValue=0
         pwm.ChangeDutyCycle(pwmValue)
-        GPIO.add_event_detect(encPinA, GPIO.RISING, callback=encoderA)
-        GPIO.add_event_detect(encPinB, GPIO.RISING, callback=encoderB)
+        #GPIO.add_event_detect(encPinA, GPIO.RISING, callback=encoderA)
+        #GPIO.add_event_detect(encPinB, GPIO.RISING, callback=encoderB)
         print(encoderPos)
         time.sleep(0.2)
