@@ -6,10 +6,9 @@ from math import sqrt, pi
 from RPi import GPIO
 import time
 
-encoderPos = 0
-
 class Winch:
     def __init__(self):
+        self.encoderPos = 0
         self.pwmPin = 19
         self.dirPin1 = 13
         self.dirPin2 = 6
@@ -20,15 +19,16 @@ class Winch:
         GPIO.setup(self.pwmPin, GPIO.OUT)
         GPIO.setup(self.dirPin1, GPIO.OUT)
         GPIO.setup(self.dirPin2, GPIO.OUT)
-        GPIO.output(self.dirPin1, 0)
-        GPIO.output(self.dirPin2, 1)
+        GPIO.output(self.dirPin1, 1)
+        GPIO.output(self.dirPin2, 0)
         GPIO.setup(self.encPinA, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.encPinB, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self.pwm = GPIO.PWM(self.pwmPin, 100)
         self.pwm.start(100)
         self.flag = 0
-        self.radius = 0.04
+        self.radius = 0.03
         self.goal = 2
+        self.length = 0
         '''self.velLimit = 0
         self.angVelLimit = 0
         rospy.Subscriber('/sunrise/waypoint', WayPoint, self.waypoint)
@@ -61,17 +61,29 @@ class Winch:
                 self.encoderPos -= 1
         self.lastencPinA = GPIO.input(encPinA)
     '''
-    def Rott(self):
-        global encoderPos
+    def Rott(self, channel):
         print(GPIO.input(self.encPinA))
         print(GPIO.input(self.encPinB))
         stateA = GPIO.input(self.encPinA)
-        stateB = GPIO.input(self.encPinB)
+        stateB = GPIO.input(self.encPinB)        
+        print(self.encoderPos/26)
+        self.length = self.encoderPos*self.radius*2*pi/26
+        print("Length")
+        print(self.encoderPos/26)
+        print(abs(self.length))
+        if abs(self.length) >= self.goal:
+            self.flag = 1
+            self.pwm.ChangeDutyCycle(0)
+            '''
+            GPIO.output(self.dirPin1, 1)
+            GPIO.output(self.dirPin2, 0)            
+            self.pwm.ChangeDutyCycle(self.pwmValue)
+            '''
 
         if (stateA == 1) and (stateB == 0):
             print("1st_condition : 1 & 0")
-            encoderPos += 1
-            print(encoderPos)
+            self.encoderPos += 1
+            print(self.encoderPos)
 
             while stateB == 0:
                 stateB = GPIO.input(self.encPinB)
@@ -81,8 +93,8 @@ class Winch:
 
         elif (stateA == 1) and (stateB == 1):
             print("2st_condition : 1 & 1")
-            encoderPos -= 1
-            print(encoderPos)
+            self.encoderPos -= 1
+            print(self.encoderPos)
 
             while stateA == 1:
                 stateA = GPIO.input(self.encPinA)
@@ -93,24 +105,14 @@ class Winch:
 
 
     def motor_run(self):
-        global encoderPos
         self.pwmValue=100
         self.pwm.ChangeDutyCycle(self.pwmValue)
         GPIO.remove_event_detect(self.encPinA)
-        GPIO.add_event_detect(self.encPinA, GPIO.RISING, callback=self.Rott, bouncetime = 200)
+        GPIO.add_event_detect(self.encPinA, GPIO.RISING, callback=self.Rott)
         while(1):
-            self.length = encoderPos*self.radius*2*pi/26
-            print("SS")
-            print(abs(self.length))
-            print(self.goal)
-            if abs(self.length) >= self.goal:
-                self.flag = 1
-                GPIO.output(self.dirPin1, 1)
-                GPIO.output(self.dirPin2, 0)            
-                self.pwm.ChangeDutyCycle(self.pwmValue)
-            if self.flag == 1 and self.length == 0:
-                break
             time.sleep(0.2)
+            if self.flag == 1 and self.length <= 0:
+                break
         '''
         while(1):
             print(1)

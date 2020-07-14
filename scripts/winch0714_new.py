@@ -5,9 +5,11 @@
 from math import sqrt, pi
 from RPi import GPIO
 import time
+import datetime
 
 class Winch:
     def __init__(self):
+        self.encoderPos = 0
         self.pwmPin = 19
         self.dirPin1 = 13
         self.dirPin2 = 6
@@ -24,10 +26,12 @@ class Winch:
         GPIO.setup(self.encPinB, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self.pwm = GPIO.PWM(self.pwmPin, 100)
         self.pwm.start(100)
-        self.encoderPos = 0
         self.flag = 0
-        self.radius = 0.04
+        self.radius = 0.03
         self.goal = 2
+        self.length = 0
+        self.prev_time = datetime.datetime.now()
+        self.now = 0
         '''self.velLimit = 0
         self.angVelLimit = 0
         rospy.Subscriber('/sunrise/waypoint', WayPoint, self.waypoint)
@@ -60,38 +64,66 @@ class Winch:
                 self.encoderPos -= 1
         self.lastencPinA = GPIO.input(encPinA)
     '''
-    def encoderA(self, channel):
+    def Rott(self, channel):
         print(GPIO.input(self.encPinA))
-        if GPIO.input(self.encPinA) == 1 and GPIO.input(self.encPinB) == 1:
-            print("TT")
+        print(GPIO.input(self.encPinB))
+        stateA = GPIO.input(self.encPinA)
+        stateB = GPIO.input(self.encPinB)
+        self.length = self.encoderPos*self.radius*2*pi/260
+        print("Length")
+        print(self.encoderPos/260)
+        print(abs(self.length))
+        if abs(self.length) >= self.goal:
+            print("Goal")
+            self.flag = 1
+            self.pwm.ChangeDutyCycle(0)
+            '''
+            GPIO.output(self.dirPin1, 1)
+            GPIO.output(self.dirPin2, 0)            
+            self.pwm.ChangeDutyCycle(self.pwmValue)
+            '''
+
+        if (stateA == 1) and (stateB == 0):
+            print("1st_condition : 1 & 0")
             self.encoderPos += 1
-        if GPIO.input(self.encPinA) == 1 and GPIO.input(self.encPinB) == 0:
-            print("FF")
+            print(self.encoderPos)
+
+            while stateB == 0:
+                stateB = GPIO.input(self.encPinB)
+            while stateB == 1:
+                stateB = GPIO.input(self.encPinB)
+            return
+
+        elif (stateA == 1) and (stateB == 1):
+            print("2st_condition : 1 & 1")
             self.encoderPos -= 1
-        while(1):
-            if GPIO.input(self.encPinA) == 0:
-                break
-        print(self.encoderPos)
-        print(self.encoderPos/26)
+            print(self.encoderPos)
+
+            while stateA == 1:
+                stateA = GPIO.input(self.encPinA)
+            return
+
+        else:
+            return
+
 
     def motor_run(self):
         self.pwmValue=100
-        self.pwm.ChangeDutyCycle(self.pwmValue)
+        self.pwm.ChangeDutyCycle(self.pwmValue)        
         GPIO.remove_event_detect(self.encPinA)
-        GPIO.add_event_detect(self.encPinA, GPIO.RISING, self.encoderA)
+        GPIO.add_event_detect(self.encPinA, GPIO.RISING, self.Rott)
         while(1):
-            self.length = self.encoderPos*self.radius*2*pi/26
-            print("SS")
-            print(abs(self.length))
-            print(self.goal)
-            if abs(self.length) >= self.goal:
-                self.flag = 1
-                GPIO.output(self.dirPin1, 1)
-                GPIO.output(self.dirPin2, 0)            
-                self.pwm.ChangeDutyCycle(self.pwmValue)
-            if self.flag == 1 and self.length == 0:
+            self.now = datetime.datetime.now()
+            print(self.now.second)
+            passed = int(self.now.second-self.prev_time.second)
+            print(passed)
+            if (passed >= 2):
+                print("passed")
                 break
             time.sleep(0.2)
+        self.pwmValue=0
+        self.pwm.ChangeDutyCycle(self.pwmValue)
+        return
         '''
         while(1):
             print(1)
