@@ -20,8 +20,8 @@ class Winch:
         GPIO.setup(self.pwmPin, GPIO.OUT)
         GPIO.setup(self.dirPin1, GPIO.OUT)
         GPIO.setup(self.dirPin2, GPIO.OUT)
-        GPIO.output(self.dirPin1, 1)
-        GPIO.output(self.dirPin2, 0)
+        GPIO.output(self.dirPin1, 0)
+        GPIO.output(self.dirPin2, 1)
         GPIO.setup(self.encPinA, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.encPinB, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self.pwm = GPIO.PWM(self.pwmPin, 100)
@@ -30,7 +30,7 @@ class Winch:
         self.radius = 0.03
         self.goal = 2
         self.length = 0
-        self.prev_time = datetime.datetime.now()
+        self.prev_time = int(round(time.time()*1000))
         self.now = 0
         '''self.velLimit = 0
         self.angVelLimit = 0
@@ -69,24 +69,27 @@ class Winch:
         print(GPIO.input(self.encPinB))
         stateA = GPIO.input(self.encPinA)
         stateB = GPIO.input(self.encPinB)
-        self.length = self.encoderPos*self.radius*2*pi/260
-        print("Length")
-        print(self.encoderPos/260)
-        print(abs(self.length))
+        self.length = self.encoderPos*self.radius*2*pi/100
+        print("Length", self.encoderPos/100)
+        print("Length value", abs(self.length))
+        '''
         if abs(self.length) >= self.goal:
             print("Goal")
             self.flag = 1
-            self.pwm.ChangeDutyCycle(0)
-            '''
+            self.pwm.ChangeDutyCycle(10)
             GPIO.output(self.dirPin1, 1)
             GPIO.output(self.dirPin2, 0)            
             self.pwm.ChangeDutyCycle(self.pwmValue)
-            '''
+        '''
+        if self.flag == 1:
+            GPIO.remove_event_detect(self.encPinA)
+            time.sleep(0.2)
+            return
 
         if (stateA == 1) and (stateB == 0):
             print("1st_condition : 1 & 0")
             self.encoderPos += 1
-            print(self.encoderPos)
+            print("encoderPos", self.encoderPos)
 
             while stateB == 0:
                 stateB = GPIO.input(self.encPinB)
@@ -97,7 +100,7 @@ class Winch:
         elif (stateA == 1) and (stateB == 1):
             print("2st_condition : 1 & 1")
             self.encoderPos -= 1
-            print(self.encoderPos)
+            print("encoderPos", self.encoderPos)
 
             while stateA == 1:
                 stateA = GPIO.input(self.encPinA)
@@ -113,12 +116,16 @@ class Winch:
         GPIO.remove_event_detect(self.encPinA)
         GPIO.add_event_detect(self.encPinA, GPIO.RISING, self.Rott)
         while(1):
-            self.now = datetime.datetime.now()
-            print(self.now.second)
-            passed = int(self.now.second-self.prev_time.second)
-            print(passed)
-            if (passed >= 2):
-                print("passed")
+            print("Loop Started")
+            self.now = lambda: int(round(time.time()*1000))
+            print("Current time", self.now())
+            passed = self.now() - self.prev_time
+            print("Time Deviation", passed)
+            if (passed >= 1000):
+                print("passed!")
+                self.flag = 1
+                prev_time = self.now()
+                GPIO.remove_event_detect(self.encPinA)
                 break
             time.sleep(0.2)
         self.pwmValue=0
