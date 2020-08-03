@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_msgs
   geometry_msgs
   sensor_msgs
+  std_msgs
   geographic_msgs
   message_generation
 )
