@@ -8,14 +8,14 @@ class motor_control:
             self.encoderPos += 1
         else:
             self.encoderPos -= 1
-        #print('PinA : %d, encoder : %d' %(channel, self.encoderPos))
+        print('PinA : %d, encoder : %d' %(channel, self.encoderPos))
     
     def encoderB(self, channel):
         if IO.input(self.encPinA) == IO.input(self.encPinB):
             self.encoderPos -= 1
         else:
             self.encoderPos += 1
-        #print('PinB : %d, encoder : %d' %(channel, self.encoderPos))
+        print('PinB : %d, encoder : %d' %(channel, self.encoderPos))
 
     def __init__(self):
         self.encPinA = 23
@@ -39,6 +39,7 @@ class motor_control:
         self.error_I += error*self.dt*self.I_term
         self.output = error*self.P_term + self.error_I
         #print(self.encoderPos)
+
 if __name__ == '__main__':
     # Initialize node
 
