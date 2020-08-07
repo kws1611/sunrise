@@ -35,7 +35,12 @@ class motor_control:
         self.P_term = 0
         self.dt = 0.1
         self.I_term = 0
+        self.mission_check = False
         self.encoder_pub = rospy.Publisher('/encoder',Int32, queue_size = 10)
+        rospy.Subscriber('/winch_roll', Bool, self.missionCb)
+
+    def missionCb(self, msg):
+        self.mission_check = msg
         
     def pid(self):
         error = self.target - self.encoderPos
