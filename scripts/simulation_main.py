@@ -7,6 +7,7 @@ from nav_msgs.msg import Odometry
 from mavros_msgs.msg import State, HomePosition
 from mavros_msgs.srv import CommandBool, SetMode
 from sunrise.msg import WayPoint
+from std_msgs.msg import Bool, Int32
 from math import sin, cos, sqrt, pi
 import numpy as np
 
@@ -31,20 +32,49 @@ class Mission:
 
         self.step = 0
         self.Winch_check = False
+        self.Winch_back_check = False
         self.mission_start = False
+        self.gripper_check = False
+        self.winch_length = 0
+        self.winch_mission_target_length = 2.3
+        self.winch_back_target_length = 0.3
         # Publisher
         self.local_pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
         self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
         self.waypoint_pub = rospy.Publisher('/sunrise/waypoint', WayPoint, queue_size=10)
+        self.winch_pub = rospy.Publisher('/winch_roll', Int32, queue_size=10)
+        self.gripper_pub = rospy.Publisher('/gripper_switch', Bool, queue_size=10)
 
         # Subscriber
         rospy.Subscriber('/mavros/state', State, self.stateCb)
         rospy.Subscriber('/mavros/home_position/home', HomePosition, self.homeCb)
         rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.LocalPositionCb)
+        rospy.Subscriber('/gripper_status', Bool, self.gripperCb)
+        rospy.Subscriber('/encoder',Int32,self.winchCb)
 
         # Service_client
         self.arming_client = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
         self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
+    
+    def Gripper_publish(self, msg):
+        gripper_msg = Bool()
+        gripper_msg.data = msg
+        self.gripper_pub(gripper_msg)
+
+    def Winch_publish(self, msg):
+        winch_msg = Int32()
+        winch_msg.data = msg
+        self.winch_pub(winch_msg)
+
+    def winchCb(self,msg):
+        self.winch_length = msg
+        if self.winch_length >self.winch_target_length:
+            self.Winch_check = True
+        if self.winch_length < self.winch_back_target_length:
+            self.Winch_back_check = True
+
+    def gripperCb(self, msg):
+        self.gripper_check = msg
     
     def check_FCU_connection(self):
         while not self.current_state.connected:
@@ -248,13 +278,23 @@ class Mission:
                     rospy.sleep(1)
                 self.step += 1
                 
-            elif process[0] == 'WP2': 
-                self.mission_start = True  
-                if self.Winch_check:
-                    rospy.loginfo('winch mission done')
-                    self.step += 1
+            elif process[0] == 'WP2':   
+                
+                if self.mission_check :
+                    rospy.loginfo('mission complete')
+                    self.Winch_publish(-10)
+                    if self.Winch_back_check :
+                        self.step += 1
+                    
+                elif self.wihch_check:
+                    rospy.loginfo('mission start')
+                    self.Winch_publish(0) 
+                    rospy.sleep(1)
+                    self.Gripper_publish(True)
+                    
                 else :
-                    rospy.sleep(0.5)
+                    rospy.loginfo('winch going down start') 
+                    self.Winch_publish(10)    ############## 10 -> line going down , 0 -> wait , -10 -> line back up
             else :
                 self.step += 1
             rospy.loginfo('Done')
