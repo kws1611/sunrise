@@ -7,7 +7,7 @@ from nav_msgs.msg import Odometry
 from mavros_msgs.msg import State, HomePosition
 from mavros_msgs.srv import CommandBool, SetMode
 from sunrise.msg import WayPoint
-from std_msgs.msg import Bool, Int32
+from std_msgs.msg import Bool, Int32, Float32
 from math import sin, cos, sqrt, pi
 import numpy as np
 
@@ -35,7 +35,7 @@ class Mission:
         self.Winch_back_check = False
         self.mission_start = False
         self.gripper_check = False
-        self.winch_length = 0
+        self.winch_length = 0.0
         self.winch_mission_target_length = 2.3
         self.winch_back_target_length = 0.3
         # Publisher
@@ -50,7 +50,7 @@ class Mission:
         rospy.Subscriber('/mavros/home_position/home', HomePosition, self.homeCb)
         rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.LocalPositionCb)
         rospy.Subscriber('/gripper_status', Bool, self.gripperCb)
-        rospy.Subscriber('/encoder',Int32,self.winchCb)
+        rospy.Subscriber('/encoder',Float32,self.winchCb)
 
         # Service_client
         self.arming_client = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
@@ -59,18 +59,19 @@ class Mission:
     def Gripper_publish(self, msg):
         gripper_msg = Bool()
         gripper_msg.data = msg
-        self.gripper_pub(gripper_msg)
+        self.gripper_pub.publish(gripper_msg)
 
     def Winch_publish(self, msg):
         winch_msg = Int32()
         winch_msg.data = msg
-        self.winch_pub(winch_msg)
+        self.winch_pub.publish(winch_msg)
 
     def winchCb(self,msg):
         self.winch_length = msg
-        if self.winch_length >self.winch_target_length:
+        if self.winch_length >self.winch_mission_target_length:
             self.Winch_check = True
-        if self.winch_length < self.winch_back_target_length:
+
+        if (self.Winch_check) and (self.winch_length<self.winch_back_target_length):
             self.Winch_back_check = True
 
     def gripperCb(self, msg):
@@ -280,13 +281,19 @@ class Mission:
                 
             elif process[0] == 'WP2':   
                 
-                if self.mission_check :
+                if self.gripper_check :
                     rospy.loginfo('mission complete')
                     self.Winch_publish(-10)
+                    print(self.winch_length)
+                    print(self.Winch_back_check)
+                    limit = 0.2
+                    if self.winch_length<limit :
+                        print(self.step)
+                        self.step += 1
                     if self.Winch_back_check :
                         self.step += 1
                     
-                elif self.wihch_check:
+                elif self.Winch_check:
                     rospy.loginfo('mission start')
                     self.Winch_publish(0) 
                     rospy.sleep(1)
