@@ -1,9 +1,9 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 import rospy
 import sys, time
 import re, time
 import pexpect
-from std_msg.msg import Bool.msg 
+from std_msgs.msg import Bool
 
 def scanble(hci="hci0", timeout=1):
     conn = pexpect.spawn("sudo hciconfig %s reset" % hci)
@@ -38,12 +38,12 @@ class BLEDevice:
         if addr is not None:
             self.connect(addr)
             self.getcharacteristics()
-        self.status_pub = rospy.Publish('/gripper_status', Bool, queue_size=10)
+        self.status_pub = rospy.Publisher('/gripper_status', Bool, queue_size=10)
         self.status = False
         self.mission_switch = False
         rospy.Subscriber('/gripper_switch', Bool,self.gripper_switchCb)
 
-    def gripper_switchCb(self, msg)
+    def gripper_switchCb(self, msg):
         self.mission_switch = msg
 
     def publishing(self):
@@ -121,7 +121,6 @@ if __name__ == '__main__':
     openstate = False
     try:
 
-
         while not rospy.is_shutdown():
             vh=gripper.getvaluehandle(b'0001')
             if gripper.mission_switch:
@@ -135,17 +134,17 @@ if __name__ == '__main__':
                         gripper.status = True    ######### gripper finished
                         break
                     print("Open state :",openstate)
-                    #time.sleep(1)
+                    time.sleep(1)
                     cnt2+=1
-                    if cnt2==60:
+                    if cnt2==30:
                         break
                         gripper.status = True   ######### gripper finished
                     
                 break
-                gripper.status_pub()
+                gripper.publilshing()
             else:
                 gripper.writereq(vh, "00\r\n")
-                gripper.status_pub()
+                gripper.publishing()
 
             #data = gripper.notify()
             #if data is not None:
