@@ -75,7 +75,7 @@ class Winch:
         global encoderPos
         for i in range(0,50):
             if i<40:
-                self.pwmValue=100       
+                self.pwmValue=100
             else:
                 self.pwmValue=0
             self.pwm.ChangeDutyCycle(self.pwmValue)
