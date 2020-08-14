@@ -2,7 +2,7 @@
 import RPi.GPIO as IO
 import time
 import rospy
-from std_msgs.msg import Int32
+from std_msgs.msg import Float32, Int32
 
 class motor_control:
     def encoderA(self, channel):
@@ -36,8 +36,8 @@ class motor_control:
         self.dt = 0.1
         self.I_term = 0
         self.mission_check = False
-        self.encoder_pub = rospy.Publisher('/encoder',Int32, queue_size = 10)
-        rospy.Subscriber('/winch_roll', Bool, self.missionCb)
+        self.encoder_pub = rospy.Publisher('/encoder',Float32, queue_size = 10)
+        rospy.Subscriber('/winch_roll', Int32, self.missionCb)
 
     def missionCb(self, msg):
         self.mission_check = msg
@@ -50,7 +50,7 @@ class motor_control:
         #print(self.encoderPos)
         rospy.sleep(0.1)
     def publish(self, encoder_pose):
-        encoder_value = Int32()
+        encoder_value = Float32()
         #print(self.encoderPos)
         encoder_value.data = encoder_pose # publishing raw encoder value 
         self.encoder_pub.publish(encoder_value)
