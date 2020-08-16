@@ -1,0 +1,8 @@
+<launch>
+    <rosparam command="load" file="$(find sunrise)/param/waypoint.yaml" />
+    <node name= "simulation_main" pkg="sunrise" type="simulation_main.py" output="screen" />
+    <node name= "winch_ros" pkg="sunrise" type="winch_ros.py" output="screen" />
+    <node name= "gripper_ros" pkg="sunrise" type="girpper_ros.py" output="screen" />
+    <node name= "gps_log" pkg="sunrise" type="gps_log.py" output="screen" />
+    
+</launch>

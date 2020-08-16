@@ -36,8 +36,8 @@ class Mission:
         self.mission_start = False
         self.gripper_check = False
         self.winch_length = 0.0
-        self.winch_mission_target_length = 2.3
-        self.winch_back_target_length = 0.3
+        self.winch_mission_target_length = 220
+        self.winch_back_target_length = 15
         # Publisher
         self.local_pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
         self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
@@ -286,11 +286,9 @@ class Mission:
                     self.Winch_publish(-10)
                     print(self.winch_length)
                     print(self.Winch_back_check)
-                    limit = 0.2
+                    limit = 10
                     if self.winch_length<limit :
                         print(self.step)
-                        self.step += 1
-                    if self.Winch_back_check :
                         self.step += 1
                     
                 elif self.Winch_check:
