@@ -284,7 +284,7 @@ class Mission:
                 if self.gripper_check :
                     rospy.loginfo('mission complete')
                     self.Winch_publish(-10)
-                    print(self.winch_length)
+                    rospy.loginfo_throttle(1, self.winch_length)
                     print(self.Winch_back_check)
                     limit = 10
                     if self.winch_length<limit :
@@ -294,7 +294,6 @@ class Mission:
                 elif self.Winch_check:
                     rospy.loginfo('mission start')
                     self.Winch_publish(0) 
-                    rospy.sleep(1)
                     self.Gripper_publish(True)
                     
                 else :
