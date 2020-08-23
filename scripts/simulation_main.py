@@ -282,26 +282,27 @@ class Mission:
             elif process[0] == 'WP2':   
                 
                 if self.gripper_check :
-                    rospy.loginfo('mission complete')
+                    rospy.loginfo_once('Drop complete')
                     self.Winch_publish(-10)
+                    rospy.loginfo_once('Winch going up')
                     rospy.loginfo_throttle(1, self.winch_length)
-                    print(self.Winch_back_check)
                     limit = 10
                     if self.winch_length<limit :
-                        print(self.step)
                         self.step += 1
                     
                 elif self.Winch_check:
-                    rospy.loginfo('mission start')
+                    rospy.loginfo_once('Mission start')
                     self.Winch_publish(0) 
                     self.Gripper_publish(True)
+                    self.gripper_check = True
                     
                 else :
-                    rospy.loginfo('winch going down start') 
+                    rospy.loginfo_once('Winch going down')
+                    rospy.loginfo_throttle(1, self.winch_length)
                     self.Winch_publish(10)    ############## 10 -> line going down , 0 -> wait , -10 -> line back up
             else :
                 self.step += 1
-            rospy.loginfo('Done')
+            rospy.loginfo_once('Done')
 
 if __name__ == '__main__':
     # Initialize node

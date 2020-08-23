@@ -90,7 +90,7 @@ class motor_control:
 
 if __name__ == '__main__':
     # Initialize node
-    rospy.init_node('motor', anonymous=True, disable_signals=True)
+    rospy.init_node('winch', anonymous=True, disable_signals=True)
     motor = motor_control()
 
     try:
