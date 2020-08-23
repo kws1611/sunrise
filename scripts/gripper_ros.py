@@ -1,9 +1,9 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 import rospy
 import sys, time
 import re, time
 import pexpect
-from std_msg.msg import Bool.msg 
+from std_msgs.msg import Bool
 
 def scanble(hci="hci0", timeout=1):
     conn = pexpect.spawn("sudo hciconfig %s reset" % hci)
@@ -38,12 +38,12 @@ class BLEDevice:
         if addr is not None:
             self.connect(addr)
             self.getcharacteristics()
-        self.status_pub = rospy.Publish('/gripper_status', Bool, queue_size=10)
+        self.status_pub = rospy.Publisher('/gripper_status', Bool, queue_size=10)
         self.status = False
         self.mission_switch = False
         rospy.Subscriber('/gripper_switch', Bool,self.gripper_switchCb)
 
-    def gripper_switchCb(self, msg)
+    def gripper_switchCb(self, msg):
         self.mission_switch = msg
 
     def publishing(self):
@@ -124,70 +124,33 @@ if __name__ == '__main__':
 
         while not rospy.is_shutdown():
             vh=gripper.getvaluehandle(b'0001')
-            if gripper.mission_switch:
-                gripper.writereq(vh, "01\r\n")
-                print("Send open ready signal to arduino")
-                while True:
-                    receive = gripper.readreq('2a19')
-                    if receive == b'80':
-                        openstate = True
+            if not gripper.status:
+                if gripper.mission_switch:
+                    gripper.writereq(vh, "01\r\n")
+                    print("Send open ready signal to arduino")
+                    while True:
+                        receive = gripper.readreq('2a19')
+                        if receive == b'80':
+                            openstate = True
+                            print("Open state :",openstate)
+                            gripper.status = True    ######### gripper finished
+                            break
                         print("Open state :",openstate)
-                        gripper.status = True    ######### gripper finished
-                        break
-                    print("Open state :",openstate)
-                    #time.sleep(1)
-                    cnt2+=1
-                    if cnt2==60:
-                        break
-                        gripper.status = True   ######### gripper finished
-                    
-                break
-                gripper.status_pub()
-            else:
-                gripper.writereq(vh, "00\r\n")
-                gripper.status_pub()
-
+                        #time.sleep(1)
+                        cnt2+=1
+                        if cnt2==60:
+                            break
+                            gripper.status = True   ######### gripper finished
+                        gripper.publishing()
+                else:
+                    gripper.writereq(vh, "00\r\n")
+                    gripper.publishing()
+            gripper.publishing()
             #data = gripper.notify()
             #if data is not None:
             #    print("Received: ", data)
-            time.sleep(1)
+            time.sleep(0.1)
             cnt+=1
 
     except rospy.ROSInterruptException:
         pass
-
-
-
-
-
-
-
-##if winch is finish
-print("Wait signal from winch!")
-while True:    
-    if cnt == 5:
-        state=1
-    vh=gripper.getvaluehandle(b'0001')
-    if state ==1:
-        gripper.writereq(vh, "01\r\n")
-        print("Send open ready signal to arduino")
-        while True:
-            receive = gripper.readreq('2a19')
-            if receive == b'80':
-                openstate = True
-                print("Open state :",openstate)
-                break
-            print("Open state :",openstate)
-            #time.sleep(1)
-            cnt2+=1
-            if cnt2==60:
-                break
-        break
-    else:
-        gripper.writereq(vh, "00\r\n")
-
-    #data = gripper.notify()
-    #if data is not None:
-    #    print("Received: ", data)
-    time.sleep(1)
-    cnt+=1
