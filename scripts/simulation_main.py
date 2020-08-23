@@ -67,7 +67,7 @@ class Mission:
         self.winch_pub.publish(winch_msg)
 
     def winchCb(self,msg):
-        self.winch_length = msg
+        self.winch_length = msg.data
         if self.winch_length >self.winch_mission_target_length:
             self.Winch_check = True
 
@@ -75,7 +75,7 @@ class Mission:
             self.Winch_back_check = True
 
     def gripperCb(self, msg):
-        self.gripper_check = msg
+        self.gripper_check = msg.data
     
     def check_FCU_connection(self):
         while not self.current_state.connected:
@@ -279,9 +279,8 @@ class Mission:
                     rospy.sleep(1)
                 self.step += 1
                 
-            elif process[0] == 'WP2':   
-                
-                if self.gripper_check :
+            elif process[0] == 'WP2':
+                if self.gripper_check is True:
                     rospy.loginfo_once('Drop complete')
                     self.Winch_publish(-10)
                     rospy.loginfo_once('Winch going up')
@@ -289,8 +288,9 @@ class Mission:
                     limit = 10
                     if self.winch_length<limit :
                         self.step += 1
+                        self.Winch_publish(0)
                     
-                elif self.Winch_check:
+                elif self.winch_length > 70.0:
                     rospy.loginfo_once('Mission start')
                     self.Winch_publish(0) 
                     self.Gripper_publish(True)
