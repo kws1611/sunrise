@@ -43,8 +43,8 @@ class Mission:
 
         # Service_client
         self.arming_client = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
-        self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
-    
+        self.set_mode_client = rospy.ServiceProxy('/mavros/set_mode', SetMode)
+
     def check_FCU_connection(self):
         while not self.current_state.connected:
             rospy.loginfo_throttle(1, "Wait FCU connection")
@@ -184,8 +184,8 @@ class Mission:
         # XY control
         obstacle = np.array((self.obstacle.x, self.obstacle.y))
         R  = self.obstacle.z
-        d1, d2 = (10.0, R + 7.0)
-        XY_max_vel = 3.0
+        d1, d2 = (10.0, R + 20.0)
+        XY_max_vel = 5.0
         
         k1 = XY_max_vel / d1
         k2 = 2*XY_max_vel * (R**2) * R*d2/(d2 - R)
@@ -221,16 +221,19 @@ class Mission:
                    4:['Return', self.wpTakeoff],
                    5:['Land', self.local_home_position]}.get(self.step, 'END')
 
-        if (process[0] == 'Takeoff') or (process[0] == 'WP2') or (process[0] == 'WP3') or (process[0] == 'Land'):
+        if (process[0] == 'Takeoff') or (process[0] == 'WP2') or (process[0] == 'WP3'):
             self.PubLocalPosition(process[1])
         
         elif (process[0] == 'WP1') or (process[0] == 'Return'):
-            if self.waypoint_reach_check(process, 20) is False:
+            if self.waypoint_reach_check(process, 10) is False:
                 velocity = self.calculate_velocity(process[1])
                 self.PublishVelocity(velocity)
 
             else:
                 self.PubLocalPosition(process[1])
+
+        elif (process[0] == 'Land'):
+            self.setMode("AUTO.LAND")
 
         else:
             self.PublishWayPoint(self.step)
@@ -242,10 +245,10 @@ class Mission:
         result = self.waypoint_reach_check(process, 0.5)
 
         if result is True:
-            if process[0] == 'Land':
-                while self.current_state.armed is True:
-                    rospy.sleep(1)
-                    
+            rospy.loginfo('Done')
+            self.step += 1
+
+        elif (process[0] == 'Land') and (self.current_state.armed is False):
             rospy.loginfo('Done')
             self.step += 1
 
