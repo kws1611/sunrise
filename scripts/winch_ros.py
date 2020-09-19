@@ -43,22 +43,24 @@ class motor_control:
         self.P_term = 100
         self.dt = 0.1
         self.I_term = 0
-        self.winch = -1
+        self.winch = 0
         self.encoder_pub = rospy.Publisher('/encoder',Float32, queue_size = 10)
         rospy.Subscriber('/winch_roll', Int32, self.missionCb)
+        self.pwm.start(0)
 
     def missionCb(self, msg):
         self.winch = msg.data
 
     def motor_run(self):
-        self.pwm.start(0)
         if self.winch == 10:
             IO.output(self.dirPin1, 0)
             IO.output(self.dirPin2, 1)
             self.pwm.ChangeDutyCycle(100)
 
         if self.winch == 0:
-            self.pwm.ChangeDutyCycle(0)
+            IO.output(self.dirPin1, 1)
+            IO.output(self.dirPin2, 0)
+            self.pwm.ChangeDutyCycle(5)
 
         if self.winch == -10:
             IO.output(self.dirPin1, 1)
