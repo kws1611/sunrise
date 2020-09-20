@@ -292,7 +292,6 @@ class Mission:
                     rospy.loginfo_once('Mission start')
                     self.Winch_publish(0) 
                     self.Gripper_publish(True)
-                    self.gripper_check = True
                     
                 else :
                     rospy.loginfo_once('Winch going down')

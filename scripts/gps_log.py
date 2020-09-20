@@ -45,10 +45,9 @@ class Log:
 
         else:
             rospy.signal_shutdown('complete')
-            print('222222222')
 
     def TimeCallback(self, msg):
-        self.gps_time = str(format(msg.time_ref.secs % 100000,".4e"))
+        self.gps_time = str(format(msg.time_ref.secs))
 
     def GpsCallback(self, msg):
         self.latitude = str(round(msg.latitude, 6))

@@ -44,7 +44,7 @@ class BLEDevice:
         rospy.Subscriber('/gripper_switch', Bool,self.gripper_switchCb)
 
     def gripper_switchCb(self, msg):
-        self.mission_switch = msg
+        self.mission_switch = msg.data
 
     def publishing(self):
         status = Bool()
@@ -117,11 +117,8 @@ if __name__ == '__main__':
     gripper = BLEDevice('24:62:AB:B2:26:5A') ##connect
     state = 0
     cnt = 0
-    cnt2 = 0
     openstate = False
     try:
-
-
         while not rospy.is_shutdown():
             vh=gripper.getvaluehandle(b'0001')
             if not gripper.status:
@@ -136,21 +133,15 @@ if __name__ == '__main__':
                             gripper.status = True    ######### gripper finished
                             break
                         print("Open state :",openstate)
-                        #time.sleep(1)
-                        cnt2+=1
-                        if cnt2==60:
-                            break
+                        cnt+=1
+                        if cnt >= 20:       
                             gripper.status = True   ######### gripper finished
+                            break
                         gripper.publishing()
-                else:
-                    gripper.writereq(vh, "00\r\n")
-                    gripper.publishing()
             gripper.publishing()
             #data = gripper.notify()
             #if data is not None:
             #    print("Received: ", data)
-            time.sleep(0.1)
-            cnt+=1
 
     except rospy.ROSInterruptException:
         pass

@@ -60,7 +60,7 @@ class motor_control:
         if self.winch == 0:
             IO.output(self.dirPin1, 1)
             IO.output(self.dirPin2, 0)
-            self.pwm.ChangeDutyCycle(5)
+            self.pwm.ChangeDutyCycle(100)
 
         if self.winch == -10:
             IO.output(self.dirPin1, 1)
