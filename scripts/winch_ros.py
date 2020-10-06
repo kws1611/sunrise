@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 import RPi.GPIO as IO
 import time
 import rospy

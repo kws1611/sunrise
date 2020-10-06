@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import os
@@ -25,7 +25,7 @@ class Log:
         rospy.Subscriber('/mavros/time_reference', TimeReference, self.TimeCallback)
 
     def ModeCallback(self, msg):
-        if msg.mode == 'OFFBOARD':
+        if msg.mode == 'OFFBOARD' || 'AUTO.LAND':
             self.mode = '1'
         else:
             self.mode = '0'
@@ -47,7 +47,7 @@ class Log:
             rospy.signal_shutdown('complete')
 
     def TimeCallback(self, msg):
-        self.gps_time = str(format(msg.time_ref.secs))
+        self.gps_time = str(format(msg.time_ref.secs % 100000,".4e"))
 
     def GpsCallback(self, msg):
         self.latitude = str(round(msg.latitude, 6))
