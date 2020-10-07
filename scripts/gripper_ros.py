@@ -36,13 +36,20 @@ class BLEDevice:
     def __init__(self, addr=None):
         self.services = {}
         self.characteristics = {}
+
         if addr is not None:
             self.connect(addr)
             self.getcharacteristics()
         self.status_pub = rospy.Publisher('/gripper_status', Bool, queue_size=10)
         self.status = False
         self.mission_switch = False
+
         rospy.Subscriber('/gripper_switch', Bool,self.gripper_switchCb)
+        rospy.Subscriber('/mavros/state', State, self.ModeCallback)
+
+    def ModeCallback(self, msg):
+        if msg.mode == 'AUTO.LAND' and msg.armed == False:
+            quit()
 
     def gripper_switchCb(self, msg):
         self.mission_switch = msg.data

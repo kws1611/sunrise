@@ -47,7 +47,12 @@ class motor_control:
         self.winch = 0
         self.encoder_pub = rospy.Publisher('/encoder',Float32, queue_size = 10)
         rospy.Subscriber('/winch_roll', Int32, self.missionCb)
+        rospy.Subscriber('/mavros/state', State, self.ModeCallback)
         self.pwm.start(0)
+
+    def ModeCallback(self, msg):
+        if msg.mode == 'AUTO.LAND' and msg.armed == False:
+            quit()
 
     def missionCb(self, msg):
         self.winch = msg.data
