@@ -31,13 +31,9 @@ class Mission:
         self.obstacle = None
 
         self.step = 0
-        self.Winch_check = False
-        self.Winch_back_check = False
-        self.mission_start = False
         self.gripper_check = False
         self.winch_length = 0.0
-        self.winch_mission_target_length = 220
-        self.winch_back_target_length = 15
+
         # Publisher
         self.local_pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
         self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
@@ -68,11 +64,6 @@ class Mission:
 
     def winchCb(self,msg):
         self.winch_length = msg.data
-        if self.winch_length >self.winch_mission_target_length:
-            self.Winch_check = True
-
-        if (self.Winch_check) and (self.winch_length<self.winch_back_target_length):
-            self.Winch_back_check = True
 
     def gripperCb(self, msg):
         self.gripper_check = msg.data
@@ -281,21 +272,22 @@ class Mission:
                 if self.gripper_check is True:
                     rospy.loginfo_once('Drop complete')
                     self.Winch_publish(-10)
-                    rospy.loginfo_once('Winch going up')
-                    rospy.loginfo_throttle(1, self.winch_length)
+                    str = "Winch going up: %f"%(self.winch_length)
+                    rospy.loginfo_throttle(1, str)
+                    
                     limit = 10
                     if self.winch_length<limit :
                         self.step += 1
                         self.Winch_publish(0)
                     
                 elif self.winch_length > 70.0:
-                    rospy.loginfo_once('Mission start')
-                    self.Winch_publish(0) 
+                    rospy.loginfo_once('Drop')
+                    self.Winch_publish(0)
                     self.Gripper_publish(True)
                     
                 else :
-                    rospy.loginfo_once('Winch going down')
-                    rospy.loginfo_throttle(1, self.winch_length)
+                    str = 'Winch going down: %f'%(self.winch_length)
+                    rospy.loginfo_throttle(1, str)
                     self.Winch_publish(10)    ############## 10 -> line going down , 0 -> wait , -10 -> line back up
             else :
                 self.step += 1

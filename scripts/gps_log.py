@@ -25,10 +25,13 @@ class Log:
         rospy.Subscriber('/mavros/time_reference', TimeReference, self.TimeCallback)
 
     def ModeCallback(self, msg):
-        if msg.mode == 'OFFBOARD' || 'AUTO.LAND':
+        if (msg.mode == 'OFFBOARD') or (msg.mode == 'AUTO.LAND'):
             self.mode = '1'
         else:
             self.mode = '0'
+
+        if msg.mode == 'AUTO.LAND' and msg.armed == False:
+            quit()
     
     def WayPointCallback(self, msg):
         if (msg.waypoint == 0) or (msg.waypoint == 1):
@@ -50,9 +53,9 @@ class Log:
         self.gps_time = str(format(msg.time_ref.secs % 100000,".4e"))
 
     def GpsCallback(self, msg):
-        self.latitude = str(round(msg.latitude, 6))
-        self.longitude = str(round(msg.longitude, 6))
-        self.altitude = str(round(msg.altitude,1))
+        self.latitude = str(format(msg.latitude, '.6f'))
+        self.longitude = str(format(msg.longitude, '.6f'))
+        self.altitude = str(format(msg.altitude, '.1f'))
 
     def WriteLog(self):
         data = " ".join([self.mode, self.waypoint_data, self.gps_time, self.latitude, self.longitude, self.altitude, '\n'])
