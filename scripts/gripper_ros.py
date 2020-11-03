@@ -5,6 +5,7 @@ import sys, time
 import re, time
 import pexpect
 from std_msgs.msg import Bool
+from mavros_msgs.msg import State
 
 def scanble(hci="hci0", timeout=1):
     conn = pexpect.spawn("sudo hciconfig %s reset" % hci)

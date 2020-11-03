@@ -5,6 +5,7 @@ import time
 import rospy
 from std_msgs.msg import Int32, Float32
 from math import pi
+from mavros_msgs.msg import State
 
 class motor_control:
     def __init__(self):
@@ -37,8 +38,8 @@ class motor_control:
 
     def motor_run(self):
         if self.winch == 10:
-            if(sw1 == 0):
-                sw1 = 1
+            if(self.sw1 == 0):
+                self.sw1 = 1
                 self.ref_time1 = time.time()
                 
             IO.output(self.dirPin1, 0)
@@ -49,11 +50,11 @@ class motor_control:
         if self.winch == 0:
             IO.output(self.dirPin1, 1)
             IO.output(self.dirPin2, 0)
-            self.pwm.ChangeDutyCycle(100)
+            self.pwm.ChangeDutyCycle(15)
 
         if self.winch == -10:
-            if(sw2 == 0):
-                sw2 = 1
+            if(self.sw2 == 0):
+                self.sw2 = 1
                 self.ref_time2 = time.time()
 
             IO.output(self.dirPin1, 1)
