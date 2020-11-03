@@ -7,23 +7,7 @@ from std_msgs.msg import Int32, Float32
 from math import pi
 
 class motor_control:
-    def encoderA(self, channel):
-        if IO.input(self.encPinA) == IO.input(self.encPinB):
-            self.encoderPos += 1
-        else:
-            self.encoderPos -= 1
-        #print('PinA : %d, encoder : %d' %(channel, self.encoderPos))
-    
-    def encoderB(self, channel):
-        if IO.input(self.encPinA) == IO.input(self.encPinB):
-            self.encoderPos -= 1
-        else:
-            self.encoderPos += 1
-        #print('PinB : %d, encoder : %d' %(channel, self.encoderPos))
-
     def __init__(self):
-        self.encPinA = 23
-        self.encPinB = 24
         self.pwmPin = 19
         self.dirPin1 = 13 
         self.dirPin2 = 6
@@ -32,18 +16,12 @@ class motor_control:
         IO.setup(self.pwmPin, IO.OUT)
         IO.setup(self.dirPin1, IO.OUT)
         IO.setup(self.dirPin2, IO.OUT)
-        IO.setup(self.encPinA, IO.IN, pull_up_down=IO.PUD_UP)
-        IO.setup(self.encPinB, IO.IN, pull_up_down=IO.PUD_UP)
+        self.sw1 = 0
+        self.sw2 = 0
+        self.ref_time1 = 0
+        self.ref_time2 = 0
         self.encoderPos = 0
-        IO.add_event_detect(self.encPinA, IO.RISING, callback=self.encoderA)
-        IO.add_event_detect(self.encPinB, IO.RISING, callback=self.encoderB)
         self.pwm = IO.PWM(self.pwmPin, 100)
-        self.output = 0 # pwm output has to be made
-        self.target = 230
-        self.error_I = 0
-        self.P_term = 100
-        self.dt = 0.1
-        self.I_term = 0
         self.winch = 0
         self.encoder_pub = rospy.Publisher('/encoder',Float32, queue_size = 10)
         rospy.Subscriber('/winch_roll', Int32, self.missionCb)
@@ -59,9 +37,14 @@ class motor_control:
 
     def motor_run(self):
         if self.winch == 10:
+            if(sw1 == 0):
+                sw1 = 1
+                self.ref_time1 = time.time()
+                
             IO.output(self.dirPin1, 0)
             IO.output(self.dirPin2, 1)
             self.pwm.ChangeDutyCycle(100)
+            self.publish(time.time() - self.ref_time1)
 
         if self.winch == 0:
             IO.output(self.dirPin1, 1)
@@ -69,21 +52,14 @@ class motor_control:
             self.pwm.ChangeDutyCycle(100)
 
         if self.winch == -10:
+            if(sw2 == 0):
+                sw2 = 1
+                self.ref_time2 = time.time()
+
             IO.output(self.dirPin1, 1)
             IO.output(self.dirPin2, 0)
             self.pwm.ChangeDutyCycle(100)
-        self.publish(self.encoderPos/(26.0*50.0)*1.1*2*pi*3.0)
-
-    def pid(self):
-        encoder_value = self.encoderPos/(26.0*50.0)*1.1*2*pi*3.0
-        self.publish(encoder_value)
-        error = abs(self.target - encoder_value)/30
-        if error > 1:
-            error = 1
-        #self.error_I += error*self.dt*self.I_term
-        self.output = error*self.P_term + self.error_I
-        #print(self.encoderPos)
-        return self.output        
+            self.publish((self.ref_time2 - self.ref_time1) - (time.time() - self.ref_time2))
 
     def publish(self, encoder_pose):
         encoder_value = Float32()
@@ -100,5 +76,9 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             motor.motor_run()
     except rospy.ROSInterruptException:
+        motor.pwm.stop()
+        pass
+
+    finally:
         motor.pwm.stop()
         pass
