@@ -1,0 +1,20 @@
+[rasp pi GPIO]
+
+
+               PORT  <----------------> SD Card Slot
+    PWR Cable
+        ^            39 37 35 33 31 ...  9 7 5 3 1
+        |            40 38 36 34 32 ... 10 8 6 4 2  
+        v
+      GPIO    
+
+[rasp pi <-> pixhwak cable] 
+
+   ORRANGE(RX[10]), RED(TX[8]), BLUE(GND[6])  - TELEM2
+
+[rasp pi <-> winch]
+  Encorder[pupple, 16]
+  Encorder[Blue, 18]
+  PWM[Yellow, 35]
+  Direction[Orrange, 33]
+  Direction[Red, 31]

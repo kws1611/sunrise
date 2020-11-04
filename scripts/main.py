@@ -275,7 +275,7 @@ class Mission:
                     str = "Winch going up: %f"%(self.winch_length)
                     rospy.loginfo_throttle(1, str)
 
-                    if self.winch_length < 1:
+                    if self.winch_length < 0.1:
                         self.step += 1
                         self.Winch_publish(0)
                     

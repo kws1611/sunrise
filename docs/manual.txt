@@ -1,0 +1,45 @@
+0. 장비 확인
+ - 배터리 잔량
+ - 모터 방향
+ - 프로펠러 방향
+ - 라즈베리파이 연결
+ - 윈치, 분리장치 연결
+ - Telemetry 연결
+ - Qgroundcontrol 실행
+ - 캘리브레이션
+ - GeoFence
+ - FailSafe 확인 (rc loss, datalink loss, return 고도) land 모드 
+ - 비행 모드 확인 (position, offboard, land)
+
+1. ssh 연결
+ - ctrl + Alt + T
+ - ssh ubuntu@[IP Address] (192.168.43.218), 비밀번호 rladntjd
+ - screen -S Name
+ - roslaunch mavros px4.launch
+ - ctrl + a, c
+ - roslaunch sunrise mission.launch
+ 
+ 세션 재연결 (screen -r Name)
+ 다른창 이동 (ctrl + a, number)
+ 나가기 (exit) 
+
+2. 설정 확인
+ [ROS IP 설정삭제]
+  - nano ~/.bashrc
+  - source ~/.bashrc
+
+ [Waypoint 수정]
+  - nano catkin_ws/src/sunrise/param/waypoint.yaml
+
+주의사항:
+ 매 비행전 프로펠러 체결 점검
+ 비행 후 pixhawk 재부팅
+ 화물 장착시 분리장치 배터리 분리 후 장착
+ 비행 전 position 모드
+ 
+대회 전 해야할 것:
+ bec 교체
+ 렌치 챙기기
+ 배터리 충전
+
+화물담당 1명, 프로펠러담당 1명, 영상촬영 1명, 조종 1명, 지상관제 1명

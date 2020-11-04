@@ -1,0 +1,11 @@
+!!! Check iris.cfg !!!
+
+export PX4_HOME_LAT=37.295301
+export PX4_HOME_LON=126.970837
+export PX4_HOME_ALT=0.0
+DONT_RUN=1 make px4_sitl_default gazebo
+source Tools/setup_gazebo.bash $(pwd) $(pwd)/build/px4_sitl_default
+gazebo Tools/sitl_gazebo/worlds/iris.world
+
+roslaunch mavros px4.launch fcu_url:="udp://:14540@127.0.0.1:14557"
+
