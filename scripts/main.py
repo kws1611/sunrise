@@ -275,11 +275,11 @@ class Mission:
                     str = "Winch going up: %f"%(self.winch_length)
                     rospy.loginfo_throttle(1, str)
 
-                    if self.winch_length < 1 :
+                    if self.winch_length < 1:
                         self.step += 1
                         self.Winch_publish(0)
                     
-                elif self.winch_length > 9.0:
+                elif self.winch_length > (process[1] - 1) / 0.4:
                     rospy.loginfo_once('Drop')
                     self.Winch_publish(0)
                     self.Gripper_publish(True)
