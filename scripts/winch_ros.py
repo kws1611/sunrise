@@ -19,8 +19,10 @@ class motor_control:
         IO.setup(self.dirPin2, IO.OUT)
         self.sw1 = 0
         self.sw2 = 0
+        self.sw3 = 0
         self.ref_time1 = 0
         self.ref_time2 = 0
+        self.ref_time3 = 0
         self.encoderPos = 0
         self.pwm = IO.PWM(self.pwmPin, 100)
         self.winch = 0
@@ -48,6 +50,10 @@ class motor_control:
             self.publish(time.time() - self.ref_time1)
 
         if self.winch == 0:
+            if(self.sw1 == 1 and self.sw3 == 0):
+                self.sw3 = 1
+                self.ref_time3 = time.time()
+
             IO.output(self.dirPin1, 1)
             IO.output(self.dirPin2, 0)
             self.pwm.ChangeDutyCycle(15)
@@ -60,7 +66,7 @@ class motor_control:
             IO.output(self.dirPin1, 1)
             IO.output(self.dirPin2, 0)
             self.pwm.ChangeDutyCycle(100)
-            self.publish((self.ref_time2 - self.ref_time1) - (time.time() - self.ref_time2))
+            self.publish((self.ref_time3 - self.ref_time1) - (time.time() - self.ref_time2))
 
     def publish(self, encoder_pose):
         encoder_value = Float32()

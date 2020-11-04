@@ -279,7 +279,7 @@ class Mission:
                         self.step += 1
                         self.Winch_publish(0)
                     
-                elif self.winch_length > (process[1] - 1) / 0.4:
+                elif self.winch_length > (process[1].z - 1) / 0.4:
                     rospy.loginfo_once('Drop')
                     self.Winch_publish(0)
                     self.Gripper_publish(True)
