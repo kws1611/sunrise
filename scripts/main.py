@@ -33,8 +33,8 @@ class Mission:
 
         # Publisher
         self.local_pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-        self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
-        self.waypoint_pub = rospy.Publisher('/sunrise/waypoint', WayPoint, queue_size=10)
+        #self.velocity_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
+        #self.waypoint_pub = rospy.Publisher('/sunrise/waypoint', WayPoint, queue_size=10)
 
         # Subscriber
         rospy.Subscriber('/mavros/state', State, self.stateCb)
@@ -221,27 +221,19 @@ class Mission:
                    4:['Return', self.wpTakeoff],
                    5:['Land', self.local_home_position]}.get(self.step, 'END')
 
-        if (process[0] == 'Takeoff') or (process[0] == 'WP2') or (process[0] == 'WP3'):
+        if (process[0] == 'Takeoff') or (process[0] == 'WP1') or (process[0] == 'Return') or (process[0] == 'WP2') or (process[0] == 'WP3'):
             self.PubLocalPosition(process[1])
-        
-        elif (process[0] == 'WP1') or (process[0] == 'Return'):
-            if self.waypoint_reach_check(process, 10) is False:
-                velocity = self.calculate_velocity(process[1])
-                self.PublishVelocity(velocity)
-
-            else:
-                self.PubLocalPosition(process[1])
 
         elif (process[0] == 'Land'):
             self.setMode("AUTO.LAND")
 
         else:
-            self.PublishWayPoint(self.step)
+            #self.PublishWayPoint(self.step)
             rospy.loginfo('Mission Complete')
             rospy.signal_shutdown('Mission Complete')
             quit()
 
-        self.PublishWayPoint(self.step)
+        #self.PublishWayPoint(self.step)
         result = self.waypoint_reach_check(process, 0.5)
 
         if result is True:
@@ -272,10 +264,10 @@ if __name__ == '__main__':
         flight.setObstaclePoints()
         rospy.sleep(1)
         
-        # flight.setMode("OFFBOARD")
-        # rospy.sleep(1)
+        flight.setMode("OFFBOARD")
+        rospy.sleep(1)
 
-        # flight.setArm()
+        flight.setArm()
 
         while not rospy.is_shutdown():
             flight.process()
